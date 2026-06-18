@@ -13,63 +13,61 @@ function ShelterCard({ shelter }) {
             <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
               {distanceText}
             </span>
-            {shelter.isSample && (
-              <span className="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full font-medium">
-                샘플
-              </span>
-            )}
           </div>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{shelter.area}</p>
-          <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{shelter.address}</p>
+          {shelter.area && (
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{shelter.area}</p>
+          )}
+          {shelter.address && (
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{shelter.address}</p>
+          )}
+          {shelter.source === 'osm' && (
+            <p className="text-xs text-gray-400 mt-1">출처: OpenStreetMap</p>
+          )}
         </div>
       </div>
 
-      <a
-        href={`tel:${shelter.phone}`}
-        className="mt-3 flex items-center justify-center gap-2 bg-blue-500 active:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors active:scale-95 transform"
-      >
-        <span>📞</span>
-        <span>{shelter.phone || '번호 없음'}</span>
-        <span className="font-normal text-blue-100 text-xs">전화하기</span>
-      </a>
+      {shelter.phone ? (
+        <a
+          href={`tel:${shelter.phone.replace(/[^0-9+]/g, '')}`}
+          className="mt-3 flex items-center justify-center gap-2 bg-blue-500 active:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors active:scale-95 transform"
+        >
+          <span>📞</span>
+          <span>{shelter.phone}</span>
+          <span className="font-normal text-blue-100 text-xs">전화하기</span>
+        </a>
+      ) : (
+        <p className="mt-3 text-center text-xs text-gray-400">전화번호 정보 없음</p>
+      )}
     </div>
   )
 }
 
 export default function ShelterList({ status, shelters }) {
-  const hasSampleData = shelters.some((s) => s.isSample)
-
   return (
     <div className="mx-4 mt-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🏥</span>
-          <h2 className="font-bold text-gray-700">가까운 동물보호소</h2>
-        </div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">🏥</span>
+        <h2 className="font-bold text-gray-700">가까운 동물보호소</h2>
+        <span className="text-xs text-gray-400">(OpenStreetMap 실데이터)</span>
       </div>
-
-      {hasSampleData && (
-        <div className="mb-3 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
-          ⚠️ 샘플 데이터입니다. 실제 운영 시 공공데이터 API 키를 설정해 주세요.
-        </div>
-      )}
 
       {status === 'loading' && (
         <div className="bg-white rounded-2xl border border-blue-100 p-6 flex items-center justify-center gap-3 text-gray-400 text-sm">
           <span className="inline-block w-5 h-5 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-          보호소 정보를 불러오는 중...
+          주변 보호소를 검색 중...
         </div>
       )}
 
       {status === 'error' && (
         <div className="bg-red-50 rounded-2xl border border-red-100 p-4 text-red-500 text-sm">
-          보호소 정보를 불러오지 못했습니다. API 키를 확인해 주세요.
+          보호소 정보를 불러오지 못했습니다. 위의 핫라인으로 신고해 주세요.
         </div>
       )}
 
       {status === 'success' && shelters.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-gray-400 text-sm text-center">
-          주변 보호소 정보가 없습니다.
+        <div className="bg-yellow-50 rounded-2xl border border-yellow-200 p-4 text-sm text-yellow-800">
+          <p className="font-bold mb-1">⚠️ 반경 30km 내 등록된 보호소가 없습니다.</p>
+          <p>위의 전국 핫라인 <strong>1577-0954</strong>로 신고하시면 담당 지자체로 연결됩니다.</p>
         </div>
       )}
 

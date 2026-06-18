@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Header from './components/Header.jsx'
 import LocationCard from './components/LocationCard.jsx'
+import HotlineCard from './components/HotlineCard.jsx'
 import ShelterList from './components/ShelterList.jsx'
 import DaanggnPanel from './components/DaanggnPanel.jsx'
 import { getCurrentPosition } from './services/geolocation.js'
@@ -66,6 +67,8 @@ export default function App() {
           address={address}
           onRefresh={loadLocation}
         />
+
+        <HotlineCard />
 
         <ShelterList status={shelterStatus} shelters={shelters} />
 
