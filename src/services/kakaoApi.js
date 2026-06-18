@@ -1,7 +1,13 @@
 const KAKAO_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
 
 export async function reverseGeocode({ lat, lng }) {
-  if (!KAKAO_KEY) throw new Error('카카오 API 키가 설정되지 않았습니다.')
+  if (!KAKAO_KEY || KAKAO_KEY === 'your_kakao_rest_api_key_here') {
+    // API 키 미설정 시 좌표만 반환
+    return {
+      address: `위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)} (카카오 API 키 필요)`,
+      dong: '내 동네',
+    }
+  }
 
   const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}&input_coord=WGS84`
   const res = await fetch(url, {
@@ -17,7 +23,6 @@ export async function reverseGeocode({ lat, lng }) {
   const jibunAddress = doc.address?.address_name
   const address = roadAddress || jibunAddress || '주소 불명'
 
-  // 동네 이름: 법정동 (dong) 또는 행정동
   const dong =
     doc.road_address?.road_name
       ? `${doc.road_address?.region_3depth_name}`

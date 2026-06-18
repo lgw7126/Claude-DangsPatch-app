@@ -6,13 +6,18 @@ function ShelterCard({ shelter }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-gray-800 text-sm leading-tight">{shelter.name}</h3>
             <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
               {distanceText}
             </span>
+            {shelter.isSample && (
+              <span className="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full font-medium">
+                샘플
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-400 mt-0.5 truncate">{shelter.area}</p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{shelter.address}</p>
@@ -32,12 +37,22 @@ function ShelterCard({ shelter }) {
 }
 
 export default function ShelterList({ status, shelters }) {
+  const hasSampleData = shelters.some((s) => s.isSample)
+
   return (
     <div className="mx-4 mt-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">🏥</span>
-        <h2 className="font-bold text-gray-700">가까운 동물보호소</h2>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🏥</span>
+          <h2 className="font-bold text-gray-700">가까운 동물보호소</h2>
+        </div>
       </div>
+
+      {hasSampleData && (
+        <div className="mb-3 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
+          ⚠️ 샘플 데이터입니다. 실제 운영 시 공공데이터 API 키를 설정해 주세요.
+        </div>
+      )}
 
       {status === 'loading' && (
         <div className="bg-white rounded-2xl border border-blue-100 p-6 flex items-center justify-center gap-3 text-gray-400 text-sm">
