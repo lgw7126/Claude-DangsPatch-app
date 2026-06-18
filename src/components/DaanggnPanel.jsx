@@ -3,14 +3,19 @@ import CameraCapture from './CameraCapture.jsx'
 
 export default function DaanggnPanel({ address, dong }) {
   const [photo, setPhoto] = useState(null)
-  const [copyStatus, setCopyStatus] = useState('idle') // idle | copied
+  const [toast, setToast] = useState(null) // { msg, type }
+  const [copyStatus, setCopyStatus] = useState('idle')
 
   const title = `[${dong || '우리 동네'}] 유기견 발견 / 도움 요청`
   const body = `방금 ${address || '근처'}에서 유기견을 발견했습니다.\n\n⚠️ 혼자 있고 도움이 필요한 상태입니다.\n임시보호나 제보 가능하신 분은 댓글 남겨주세요!`
   const fullText = `제목: ${title}\n\n${body}`
 
-  // 클립보드 복사
-  async function copyToClipboard() {
+  function showToast(msg, type = 'info') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  async function copyText() {
     try {
       await navigator.clipboard.writeText(fullText)
     } catch {
@@ -26,43 +31,54 @@ export default function DaanggnPanel({ address, dong }) {
     setTimeout(() => setCopyStatus('idle'), 2500)
   }
 
-  // 사진 파일 객체 생성
-  function getPhotoFile() {
-    if (!photo?.blob) return null
-    return new File([photo.blob], 'stray-dog.jpg', { type: 'image/jpeg' })
+  // 이미지를 클립보드에 복사 (ClipboardItem API)
+  async function copyImageToClipboard() {
+    if (!photo?.blob) return false
+    try {
+      const blob = photo.blob instanceof File
+        ? photo.blob
+        : new Blob([photo.blob], { type: 'image/jpeg' })
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/jpeg': blob }),
+      ])
+      return true
+    } catch {
+      return false
+    }
   }
 
-  // 당근마켓 딥링크
+  // 당근마켓
   async function openDaangn() {
-    await copyToClipboard()
+    await copyText()
     window.location.href = 'daangn://home'
     setTimeout(() => { window.location.href = 'https://www.daangn.com/kr' }, 1500)
   }
 
-  // Instagram — Web Share API (사진 포함 네이티브 공유 시트)
+  // Instagram: 이미지 클립보드 복사 → instagram:// 딥링크
   async function shareInstagram() {
-    const file = getPhotoFile()
-    if (navigator.share) {
-      try {
-        const shareData = { title, text: body }
-        if (file && navigator.canShare?.({ files: [file] })) {
-          shareData.files = [file]
-        }
-        await navigator.share(shareData)
-        return
-      } catch (e) {
-        if (e.name === 'AbortError') return // 사용자가 취소
-      }
+    const copied = await copyImageToClipboard()
+    if (copied) {
+      showToast('📸 사진이 복사됐습니다! 인스타그램에서 붙여넣기 하세요.', 'success')
+    } else {
+      // 사진 없거나 ClipboardItem 미지원 → 텍스트만 복사
+      await copyText()
+      showToast('📋 글이 복사됐습니다! 인스타그램에 붙여넣기 하세요.', 'info')
     }
-    // Web Share API 미지원 시 Instagram 앱 실행
-    window.location.href = 'instagram://app'
-    setTimeout(() => { window.open('https://www.instagram.com/', '_blank') }, 1200)
+    // 딥링크로 Instagram 앱 실행
+    window.location.href = 'instagram://'
+    setTimeout(() => {
+      // 앱 미설치 시 스토어로
+      window.open('https://www.instagram.com/', '_blank')
+    }, 1800)
   }
 
-  // Threads — 웹 인텐트 (텍스트) + 사진은 Web Share
+  // Threads: 웹 인텐트 (텍스트) + Web Share로 사진
   async function shareThreads() {
-    const file = getPhotoFile()
-    // 사진이 있으면 Web Share API로 파일 포함 공유
+    const file = photo?.blob
+      ? new File([photo.blob], 'stray-dog.jpg', { type: 'image/jpeg' })
+      : null
+
+    // 사진 있고 Web Share API 지원하면 파일 포함 공유
     if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ title, text: body, files: [file] })
@@ -71,26 +87,26 @@ export default function DaanggnPanel({ address, dong }) {
         if (e.name === 'AbortError') return
       }
     }
-    // 텍스트만 Threads 웹 인텐트로
+    // 텍스트만 Threads 웹 인텐트
     const encoded = encodeURIComponent(`${title}\n\n${body}`)
     window.open(`https://www.threads.net/intent/post?text=${encoded}`, '_blank')
   }
 
-  // 일반 공유 (Web Share API)
+  // 더 보내기 (카카오톡, SMS 등 네이티브 공유)
   async function shareGeneral() {
-    const file = getPhotoFile()
+    const file = photo?.blob
+      ? new File([photo.blob], 'stray-dog.jpg', { type: 'image/jpeg' })
+      : null
     if (!navigator.share) {
-      await copyToClipboard()
+      await copyText()
       return
     }
     try {
       const shareData = { title, text: body }
-      if (file && navigator.canShare?.({ files: [file] })) {
-        shareData.files = [file]
-      }
+      if (file && navigator.canShare?.({ files: [file] })) shareData.files = [file]
       await navigator.share(shareData)
     } catch (e) {
-      if (e.name !== 'AbortError') await copyToClipboard()
+      if (e.name !== 'AbortError') await copyText()
     }
   }
 
@@ -110,7 +126,7 @@ export default function DaanggnPanel({ address, dong }) {
 
         {/* 글 미리보기 */}
         <div>
-          <p className="text-xs font-semibold text-gray-400 mb-2">✏️ 자동 생성 글 템플릿</p>
+          <p className="text-xs font-semibold text-gray-400 mb-2">✏️ 글 템플릿 (자동 생성)</p>
           <div className="bg-orange-50 rounded-xl p-3 space-y-1">
             <p className="text-xs font-bold text-gray-500">제목</p>
             <p className="text-sm font-medium text-gray-800 leading-snug">{title}</p>
@@ -119,38 +135,35 @@ export default function DaanggnPanel({ address, dong }) {
           </div>
         </div>
 
-        {/* 공유 버튼들 */}
+        {/* 공유 버튼 */}
         <div className="space-y-2">
           {/* 당근마켓 */}
           <button
             onClick={openDaangn}
             className="w-full py-4 rounded-xl font-bold text-base bg-orange-500 active:bg-orange-600 text-white active:scale-95 transform transition-all flex items-center justify-center gap-2"
           >
-            <span>🥕</span>
-            <span>내용 복사 후 당근마켓 열기</span>
+            <span>🥕</span><span>내용 복사 후 당근마켓 열기</span>
           </button>
 
-          {/* Instagram + Threads 나란히 */}
+          {/* Instagram + Threads */}
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={shareInstagram}
               className="py-3.5 rounded-xl font-bold text-sm active:scale-95 transform transition-all flex items-center justify-center gap-2 text-white"
               style={{ background: 'linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)' }}
             >
-              <span className="text-lg">📸</span>
-              <span>Instagram</span>
+              <span className="text-lg">📸</span><span>Instagram</span>
             </button>
 
             <button
               onClick={shareThreads}
               className="py-3.5 rounded-xl font-bold text-sm bg-black active:bg-gray-900 text-white active:scale-95 transform transition-all flex items-center justify-center gap-2"
             >
-              <ThreadsIcon />
-              <span>Threads</span>
+              <ThreadsIcon /><span>Threads</span>
             </button>
           </div>
 
-          {/* 더 보내기 (네이티브 공유 시트) */}
+          {/* 더 보내기 */}
           <button
             onClick={shareGeneral}
             className={`w-full py-3 rounded-xl font-medium text-sm active:scale-95 transform transition-all flex items-center justify-center gap-2 border ${
@@ -159,14 +172,23 @@ export default function DaanggnPanel({ address, dong }) {
                 : 'bg-gray-50 border-gray-200 text-gray-600 active:bg-gray-100'
             }`}
           >
-            {copyStatus === 'copied' ? (
-              <><span>✅</span><span>클립보드에 복사됨</span></>
-            ) : (
-              <><span>↗️</span><span>더 보내기 (카카오톡, SMS 등)</span></>
-            )}
+            {copyStatus === 'copied'
+              ? <><span>✅</span><span>클립보드에 복사됨</span></>
+              : <><span>↗️</span><span>더 보내기 (카카오톡, SMS 등)</span></>}
           </button>
         </div>
       </div>
+
+      {/* 토스트 알림 */}
+      {toast && (
+        <div
+          className={`mt-3 px-4 py-3 rounded-xl text-sm font-medium text-center shadow-md transition-all ${
+            toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-gray-800 text-white'
+          }`}
+        >
+          {toast.msg}
+        </div>
+      )}
     </div>
   )
 }
